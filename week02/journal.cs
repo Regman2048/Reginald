@@ -1,0 +1,117 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+
+namespace JournalApp
+{
+    public class Journal
+    {
+        private List<Entry> _entries;
+        private List<string> _prompts;
+        private Random _random;
+        // Using a constant for the separator.  This makes it easier to change later.
+        private const string _separator = "~|~";
+
+        public Journal()
+        {
+            _entries = new List<Entry>();
+            _prompts = new List<string>()
+            {
+                "Who was the most interesting person I interacted with today?",
+                "What was the best part of my day?",
+                "How did I see the hand of the Lord in my life today?",
+                "What was the strongest emotion I felt today?",
+                "If I had one thing I could do over today, what would it be?",
+                "What am I grateful for today?",
+                "What is one small thing I did well today?",
+                "What challenged me today, and how did I respond?",
+            };
+            _random = new Random();
+        }
+
+        public void AddEntry()
+        {
+            string prompt = _prompts[_random.Next(_prompts.Count)];
+            Console.WriteLine($"\nPrompt: {prompt}");
+            Console.Write("Your response: ");
+            string response = Console.ReadLine();
+            _entries.Add(new Entry(prompt, response));
+            Console.WriteLine("Entry added.");
+        }
+
+        public void DisplayJournal()
+        {
+            if (_entries.Count == 0)
+            {
+                Console.WriteLine("The journal is empty.");
+                return;
+            }
+            Console.WriteLine("\n--- Journal Entries ---");
+            foreach (Entry entry in _entries)
+            {
+                Console.Write(entry); // Use the Entry's ToString method.
+            }
+            Console.WriteLine("--- End of Journal Entries ---");
+        }
+
+        public void SaveJournal(string filename)
+        {
+            try
+            {
+                using (StreamWriter writer = new StreamWriter(filename))
+                {
+                    foreach (Entry entry in _entries)
+                    {
+                        // Saves the entry data, joined by the separator.
+                        writer.WriteLine($"{entry.Date}{_separator}{entry.Prompt}{_separator}{entry.Response}");
+                    }
+                }
+                Console.WriteLine($"Journal saved to {filename}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving journal: {ex.Message}");
+            }
+        }
+
+        public void LoadJournal(string filename)
+        {
+            _entries.Clear(); // Clear the current journal entries.
+            try
+            {
+                if (File.Exists(filename))
+                {
+                    using (StreamReader reader = new StreamReader(filename))
+                    {
+                        string line;
+                        while ((line = reader.ReadLine()) != null)
+                        {
+                            string[] parts = line.Split(_separator);
+                            //check if the line was correctly formatted.
+                            if (parts.Length == 3)
+                            {
+                                Entry entry = new Entry(parts[1], parts[2]);
+                                entry.Date = parts[0]; //load the date.
+                                _entries.Add(entry);
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Skipping invalid line: {line}"); //error message
+                            }
+                        }
+                    }
+                    Console.WriteLine($"Journal loaded from {filename}");
+                }
+                else
+                {
+                    Console.WriteLine($"File not found: {filename}.  A new journal will be started.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading journal: {ex.Message}");
+            }
+        }
+    }
+}
