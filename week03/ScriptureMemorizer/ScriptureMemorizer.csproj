@@ -1,11 +1,66 @@
+using System;
+using System.Collections.Generic;
+using System.Linq; // For LINQ methods like .Where(), .Count(), .All()
 
-<Project Sdk="Microsoft.NET.Sdk">
+public class Scripture
+{
+    private Reference _reference;
+    private List<Word> _words;
+    private Random _random; // Use a single Random instance
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>disable</Nullable>
-  </PropertyGroup>
+    public Scripture(Reference reference, string text)
+    {
+        _reference = reference;
+        _random = new Random(); // Initialize Random instance
 
-</Project>
+        _words = new List<Word>();
+        // Split the text into words and create Word objects
+        // Use regular expression to split by spaces and common punctuation while keeping apostrophes within words
+        // This regex splits on spaces and punctuation marks, but keeps apostrophes if part of a word.
+        // It also handles cases where punctuation is directly attached to words.
+        string[] rawWords = System.Text.RegularExpressions.Regex.Split(text, @"(?<=[.?!,;:\s])\s*|\s+");
+
+        foreach (string rawWord in rawWords)
+        {
+            if (!string.IsNullOrWhiteSpace(rawWord))
+            {
+                _words.Add(new Word(rawWord));
+            }
+        }
+    }
+
+    // Exceeding requirement: Hide a few random words that are not already hidden
+    public void HideRandomWords(int count)
+    {
+        // Get all currently unhidden words
+        List<Word> unhiddenWords = _words.Where(w => !w.IsHidden()).ToList();
+
+        // If there are no unhidden words left, or we're asked to hide more than available, adjust count
+        if (unhiddenWords.Count == 0)
+        {
+            return; // No words to hide
+        }
+
+        // Ensure we don't try to hide more words than are available and unhidden
+        int actualCountToHide = Math.Min(count, unhiddenWords.Count);
+
+        for (int i = 0; i < actualCountToHide; i++)
+        {
+            int indexToHide = _random.Next(unhiddenWords.Count);
+            unhiddenWords[indexToHide].Hide();
+            // Remove the word from the temporary list so it's not selected again in this batch
+            unhiddenWords.RemoveAt(indexToHide);
+        }
+    }
+
+    public string GetDisplayText()
+    {
+        string scriptureText = string.Join(" ", _words.Select(w => w.GetDisplayText()));
+        return $"{_reference.GetDisplayText()} {scriptureText}";
+    }
+
+    public bool IsCompletelyHidden()
+    {
+        return _words.All(w => w.IsHidden());
+    }
+}
