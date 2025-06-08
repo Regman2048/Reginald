@@ -1,11 +1,82 @@
+using System;
+using System.Collections.Generic;
 
-<Project Sdk="Microsoft.NET.Sdk">
+// Represents a comment on a YouTube video
+public class Comment
+{
+    private string _commenterName;
+    private string _commentText;
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>disable</Nullable>
-  </PropertyGroup>
+    // Constructor to initialize a new comment
+    public Comment(string commenterName, string commentText)
+    {
+        _commenterName = commenterName;
+        _commentText = commentText;
+    }
 
-</Project>
+    // Public method to get the name of the commenter
+    public string GetCommenterName()
+    {
+        return _commenterName;
+    }
+
+    // Public method to get the text of the comment
+    public string GetCommentText()
+    {
+        return _commentText;
+    }
+}
+
+// Represents a YouTube video
+public class Video
+{
+    private string _title;
+    private string _author;
+    private int _lengthInSeconds; // Length of the video in seconds
+    private List<Comment> _comments; // List to store comments associated with this video
+
+    // Constructor to initialize a new video
+    public Video(string title, string author, int lengthInSeconds)
+    {
+        _title = title;
+        _author = author;
+        _lengthInSeconds = lengthInSeconds;
+        _comments = new List<Comment>(); // Initialize the list of comments
+    }
+
+    // Public method to add a comment to the video's list of comments
+    public void AddComment(Comment comment)
+    {
+        _comments.Add(comment);
+    }
+
+    // Public method to get the total number of comments for this video
+    public int GetNumberOfComments()
+    {
+        return _comments.Count;
+    }
+
+    // Public method to get the video title
+    public string GetTitle()
+    {
+        return _title;
+    }
+
+    // Public method to get the video author
+    public string GetAuthor()
+    {
+        return _author;
+    }
+
+    // Public method to get the video length in seconds
+    public int GetLengthInSeconds()
+    {
+        return _lengthInSeconds;
+    }
+
+    // Public method to get the list of comments (read-only access)
+    public List<Comment> GetComments()
+    {
+        return _comments;
+    }
+}
