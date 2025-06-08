@@ -1,11 +1,154 @@
+using System;
+using System.Collections.Generic;
 
-<Project Sdk="Microsoft.NET.Sdk">
+// Represents an address with street, city, state/province, and country.
+public class Address
+{
+    private string _streetAddress;
+    private string _city;
+    private string _stateProvince;
+    private string _country;
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>disable</Nullable>
-  </PropertyGroup>
+    // Constructor for the Address class
+    public Address(string streetAddress, string city, string stateProvince, string country)
+    {
+        _streetAddress = streetAddress;
+        _city = city;
+        _stateProvince = stateProvince;
+        _country = country;
+    }
 
-</Project>
+    // Checks if the address is in the USA.
+    public bool IsInUSA()
+    {
+        return _country.Equals("USA", StringComparison.OrdinalIgnoreCase);
+    }
+
+    // Returns a formatted string of the full address.
+    public string GetFullAddress()
+    {
+        return $"{_streetAddress}\n{_city}, {_stateProvince}\n{_country}";
+    }
+}
+
+// Represents a customer with a name and an address.
+public class Customer
+{
+    private string _name;
+    private Address _address;
+
+    // Constructor for the Customer class
+    public Customer(string name, Address address)
+    {
+        _name = name;
+        _address = address;
+    }
+
+    // Returns the customer's name.
+    public string GetName()
+    {
+        return _name;
+    }
+
+    // Returns the customer's address object.
+    public Address GetAddress()
+    {
+        return _address;
+    }
+
+    // Checks if the customer lives in the USA by delegating to the Address object.
+    public bool LivesInUSA()
+    {
+        return _address.IsInUSA();
+    }
+}
+
+// Represents a product with its details and quantity.
+public class Product
+{
+    private string _name;
+    private string _productId;
+    private double _price;
+    private int _quantity;
+
+    // Constructor for the Product class
+    public Product(string name, string productId, double price, int quantity)
+    {
+        _name = name;
+        _productId = productId;
+        _price = price;
+        _quantity = quantity;
+    }
+
+    // Returns the name of the product.
+    public string GetName()
+    {
+        return _name;
+    }
+
+    // Returns the product ID.
+    public string GetProductId()
+    {
+        return _productId;
+    }
+
+    // Calculates and returns the total cost for this specific product (price * quantity).
+    public double GetTotalCost()
+    {
+        return _price * _quantity;
+    }
+}
+
+// Represents an order containing a list of products and customer information.
+public class Order
+{
+    private List<Product> _products;
+    private Customer _customer;
+
+    // Constructor for the Order class
+    public Order(Customer customer)
+    {
+        _customer = customer;
+        _products = new List<Product>(); // Initialize the list of products
+    }
+
+    // Adds a product to the order.
+    public void AddProduct(Product product)
+    {
+        _products.Add(product);
+    }
+
+    // Calculates the total cost of the order, including shipping.
+    public double CalculateTotalCost()
+    {
+        double totalProductCost = 0;
+        foreach (Product product in _products)
+        {
+            totalProductCost += product.GetTotalCost();
+        }
+
+        double shippingCost = _customer.LivesInUSA() ? 5.00 : 35.00;
+
+        return totalProductCost + shippingCost;
+    }
+
+    // Returns a string for the packing label, listing products by name and ID.
+    public string GetPackingLabel()
+    {
+        string label = "--- Packing Label ---\n";
+        foreach (Product product in _products)
+        {
+            label += $"Product: {product.GetName()} (ID: {product.GetProductId()})\n";
+        }
+        return label;
+    }
+
+    // Returns a string for the shipping label, with customer name and address.
+    public string GetShippingLabel()
+    {
+        string label = "--- Shipping Label ---\n";
+        label += $"Customer: {_customer.GetName()}\n";
+        label += $"Address:\n{_customer.GetAddress().GetFullAddress()}";
+        return label;
+    }
+}
