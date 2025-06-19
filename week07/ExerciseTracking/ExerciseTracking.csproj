@@ -1,11 +1,189 @@
+using System;
+using System.Collections.Generic; // Required for List
 
-<Project Sdk="Microsoft.NET.Sdk">
+// Base class: Activity
+// Contains attributes and methods common to all types of activities.
+// Declares abstract methods for calculations that must be implemented by derived classes.
+public abstract class Activity
+{
+    // Private member variables for encapsulation
+    private DateTime _date;
+    private int _lengthInMinutes; // Duration of the activity in minutes
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>disable</Nullable>
-  </PropertyGroup>
+    // Constructor to initialize common attributes
+    public Activity(DateTime date, int lengthInMinutes)
+    {
+        _date = date;
+        _lengthInMinutes = lengthInMinutes;
+    }
 
-</Project>
+    // Public getter for the length in minutes (useful for derived calculations)
+    protected int GetLengthInMinutes()
+    {
+        return _lengthInMinutes;
+    }
+
+    // Abstract methods that derived classes MUST implement
+    // These methods return calculated values specific to each activity type.
+    public abstract double GetDistance(); // Distance in kilometers
+    public abstract double GetSpeed();    // Speed in kilometers per hour (kph)
+    public abstract double GetPace();     // Pace in minutes per kilometer (min/km)
+
+    // Virtual method to get the activity type name.
+    // Can be overridden by derived classes if needed, but a default is provided.
+    protected virtual string GetActivityType()
+    {
+        // This will be overridden by each derived class to return "Running", "Cycling", etc.
+        return "Generic Activity";
+    }
+
+    // GetSummary method: Produces a formatted string summary for the activity.
+    // This method is defined in the base class because all activities will have a summary.
+    // It utilizes the abstract GetDistance(), GetSpeed(), and GetPace() methods,
+    // demonstrating polymorphism at runtime.
+    public string GetSummary()
+    {
+        // Format the date as "dd MMM yyyy" (e.g., "03 Nov 2022")
+        string formattedDate = _date.ToString("dd MMM yyyy");
+
+        // Get calculated values. Polymorphism ensures the correct derived class method is called.
+        double distance = GetDistance();
+        double speed = GetSpeed();
+        double pace = GetPace();
+
+        // Construct the summary string
+        return $"{formattedDate} {GetActivityType()} ({_lengthInMinutes} min) - " +
+               $"Distance: {distance:F1} km, Speed: {speed:F1} kph, Pace: {pace:F1} min per km";
+    }
+}
+
+// Derived class: Running
+// Inherits from Activity and implements specific calculations for running.
+public class Running : Activity
+{
+    // Private member variable unique to Running
+    private double _distanceKm; // Stored directly for running
+
+    // Constructor
+    public Running(DateTime date, int lengthInMinutes, double distanceKm)
+        : base(date, lengthInMinutes) // Call base class constructor
+    {
+        _distanceKm = distanceKm;
+    }
+
+    // Override GetActivityType to return "Running"
+    protected override string GetActivityType()
+    {
+        return "Running";
+    }
+
+    // Override GetDistance: Returns the stored distance
+    public override double GetDistance()
+    {
+        return _distanceKm;
+    }
+
+    // Override GetSpeed: Calculates speed based on stored distance and inherited minutes
+    public override double GetSpeed()
+    {
+        // Speed (kph) = (distance / minutes) * 60
+        if (GetLengthInMinutes() == 0) return 0; // Avoid division by zero
+        return (_distanceKm / GetLengthInMinutes()) * 60;
+    }
+
+    // Override GetPace: Calculates pace based on stored distance and inherited minutes
+    public override double GetPace()
+    {
+        // Pace (min per km) = minutes / distance
+        if (_distanceKm == 0) return 0; // Avoid division by zero
+        return GetLengthInMinutes() / _distanceKm;
+    }
+}
+
+// Derived class: Cycling
+// Inherits from Activity and implements specific calculations for cycling.
+public class Cycling : Activity
+{
+    // Private member variable unique to Cycling
+    private double _speedKph; // Stored directly for cycling
+
+    // Constructor
+    public Cycling(DateTime date, int lengthInMinutes, double speedKph)
+        : base(date, lengthInMinutes) // Call base class constructor
+    {
+        _speedKph = speedKph;
+    }
+
+    // Override GetActivityType to return "Cycling"
+    protected override string GetActivityType()
+    {
+        return "Cycling";
+    }
+
+    // Override GetDistance: Calculates distance based on stored speed and inherited minutes
+    public override double GetDistance()
+    {
+        // Distance (km) = (speed / 60) * minutes
+        return (_speedKph / 60) * GetLengthInMinutes();
+    }
+
+    // Override GetSpeed: Returns the stored speed
+    public override double GetSpeed()
+    {
+        return _speedKph;
+    }
+
+    // Override GetPace: Calculates pace based on stored speed
+    public override double GetPace()
+    {
+        // Pace (min per km) = 60 / speed
+        if (_speedKph == 0) return 0; // Avoid division by zero
+        return 60 / _speedKph;
+    }
+}
+
+// Derived class: Swimming
+// Inherits from Activity and implements specific calculations for swimming.
+public class Swimming : Activity
+{
+    // Private member variable unique to Swimming
+    private int _numberOfLaps; // Stored directly for swimming
+
+    // Constructor
+    public Swimming(DateTime date, int lengthInMinutes, int numberOfLaps)
+        : base(date, lengthInMinutes) // Call base class constructor
+    {
+        _numberOfLaps = numberOfLaps;
+    }
+
+    // Override GetActivityType to return "Swimming"
+    protected override string GetActivityType()
+    {
+        return "Swimming";
+    }
+
+    // Override GetDistance: Calculates distance based on number of laps
+    public override double GetDistance()
+    {
+        // Distance (km) = swimming laps * 50 / 1000 (since 1 lap = 50 meters)
+        return (_numberOfLaps * 50.0) / 1000.0;
+    }
+
+    // Override GetSpeed: Calculates speed based on calculated distance and inherited minutes
+    public override double GetSpeed()
+    {
+        // Speed (kph) = (distance / minutes) * 60
+        double distance = GetDistance();
+        if (GetLengthInMinutes() == 0) return 0; // Avoid division by zero
+        return (distance / GetLengthInMinutes()) * 60;
+    }
+
+    // Override GetPace: Calculates pace based on calculated distance and inherited minutes
+    public override double GetPace()
+    {
+        // Pace (min per km) = minutes / distance
+        double distance = GetDistance();
+        if (distance == 0) return 0; // Avoid division by zero
+        return GetLengthInMinutes() / distance;
+    }
+}
