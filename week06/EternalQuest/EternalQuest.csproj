@@ -1,11 +1,743 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq; // Added for .Where() and .ToList()
 
-<Project Sdk="Microsoft.NET.Sdk">
+// --- Base Goal Class ---
+// The abstract Goal class serves as the base for all specific goal types.
+// It encapsulates common properties and defines abstract methods that must be implemented by derived classes.
+public abstract class Goal
+{
+    // Private member variables for encapsulation
+    private string _shortName;
+    private string _description;
+    private int _points;
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>disable</Nullable>
-  </PropertyGroup>
+    // Constructor to initialize common goal properties
+    public Goal(string name, string description, int points)
+    {
+        _shortName = name;
+        _description = description;
+        _points = points;
+    }
 
-</Project>
+    // Public getters for private members
+    public string GetShortName()
+    {
+        return _shortName;
+    }
+
+    public string GetDescription()
+    {
+        return _description;
+    }
+
+    public int GetPoints()
+    {
+        return _points;
+    }
+
+    // Abstract method to be overridden by derived classes for recording an event
+    public abstract int RecordEvent();
+
+    // Abstract method to be overridden by derived classes to check if the goal is complete
+    public abstract bool IsComplete();
+
+    // Abstract method to be overridden by derived classes to provide a string representation for saving
+    public abstract string GetStringRepresentation();
+
+    // Abstract method to be overridden by derived classes to display goal progress in the UI
+    public abstract void DisplayProgress();
+}
+
+// --- Derived Goal Classes ---
+
+// SimpleGoal: A goal that is completed once for a set amount of points.
+public class SimpleGoal : Goal
+{
+    private bool _isComplete; // Tracks if the simple goal has been completed
+
+    // Constructor for creating a new SimpleGoal
+    public SimpleGoal(string name, string description, int points) : base(name, description, points)
+    {
+        _isComplete = false; // Initially not complete
+    }
+
+    // Constructor for loading a SimpleGoal from saved data
+    public SimpleGoal(string name, string description, int points, bool isComplete) : base(name, description, points)
+    {
+        _isComplete = isComplete;
+    }
+
+    // Overrides RecordEvent to mark the goal as complete and return points
+    public override int RecordEvent()
+    {
+        if (!_isComplete) // Only award points if not already complete
+        {
+            _isComplete = true;
+            Console.WriteLine($"Congratulations! You earned {GetPoints()} points for completing '{GetShortName()}'.");
+            return GetPoints();
+        }
+        else
+        {
+            Console.WriteLine($"'{GetShortName()}' is already complete. No additional points awarded.");
+            return 0;
+        }
+    }
+
+    // Overrides IsComplete to return the completion status
+    public override bool IsComplete()
+    {
+        return _isComplete;
+    }
+
+    // Overrides GetStringRepresentation for saving the goal's state
+    public override string GetStringRepresentation()
+    {
+        return $"SimpleGoal:{GetShortName()}|{GetDescription()}|{GetPoints()}|{_isComplete}";
+    }
+
+    // Overrides DisplayProgress to show completion status with a checkbox
+    public override void DisplayProgress()
+    {
+        string status = _isComplete ? "[X]" : "[ ]";
+        Console.WriteLine($"{status} {GetShortName()} ({GetDescription()})");
+    }
+}
+
+// EternalGoal: A goal that is never truly complete, awarding points each time it's recorded.
+public class EternalGoal : Goal
+{
+    // Constructor for EternalGoal
+    public EternalGoal(string name, string description, int points) : base(name, description, points)
+    {
+        // No specific state needed beyond base properties for an eternal goal
+    }
+
+    // Overrides RecordEvent to always award points
+    public override int RecordEvent()
+    {
+        Console.WriteLine($"You recorded '{GetShortName()}' and earned {GetPoints()} points!");
+        return GetPoints();
+    }
+
+    // Overrides IsComplete to always return false as eternal goals are never truly "complete"
+    public override bool IsComplete()
+    {
+        return false;
+    }
+
+    // Overrides GetStringRepresentation for saving
+    public override string GetStringRepresentation()
+    {
+        return $"EternalGoal:{GetShortName()}|{GetDescription()}|{GetPoints()}";
+    }
+
+    // Overrides DisplayProgress to show without a completion checkbox
+    public override void DisplayProgress()
+    {
+        Console.WriteLine($"[ ] {GetShortName()} ({GetDescription()}) - (Eternal)");
+    }
+}
+
+// ChecklistGoal: A goal that needs to be accomplished a specific number of times.
+// Awards points per accomplishment and a bonus upon reaching the target.
+public class ChecklistGoal : Goal
+{
+    private int _amountCompleted; // How many times the goal has been accomplished
+    private int _targetAmount;    // The total number of times it needs to be accomplished
+    private int _bonusPoints;     // Bonus points awarded upon completion
+
+    // Constructor for creating a new ChecklistGoal
+    public ChecklistGoal(string name, string description, int points, int targetAmount, int bonusPoints)
+        : base(name, description, points)
+    {
+        _amountCompleted = 0; // Starts at 0 accomplishments
+        _targetAmount = targetAmount;
+        _bonusPoints = bonusPoints;
+    }
+
+    // Constructor for loading a ChecklistGoal from saved data
+    public ChecklistGoal(string name, string description, int points, int targetAmount, int bonusPoints, int amountCompleted)
+        : base(name, description, points)
+    {
+        _amountCompleted = amountCompleted;
+        _targetAmount = targetAmount;
+        _bonusPoints = bonusPoints;
+    }
+
+    // Overrides RecordEvent to increment completion count and award points/bonus
+    public override int RecordEvent()
+    {
+        if (!IsComplete()) // Only record if not yet complete
+        {
+            _amountCompleted++;
+            Console.WriteLine($"You recorded '{GetShortName()}' and earned {GetPoints()} points!");
+            int pointsEarned = GetPoints();
+
+            if (IsComplete()) // Check if goal is now complete
+            {
+                pointsEarned += _bonusPoints;
+                Console.WriteLine($"Congratulations! You completed '{GetShortName()}' and earned a bonus of {_bonusPoints} points!");
+            }
+            return pointsEarned;
+        }
+        else
+        {
+            Console.WriteLine($"'{GetShortName()}' is already complete. No additional points awarded.");
+            return 0;
+        }
+    }
+
+    // Overrides IsComplete to check if target amount has been reached
+    public override bool IsComplete()
+    {
+        return _amountCompleted >= _targetAmount;
+    }
+
+    // Overrides GetStringRepresentation for saving
+    public override string GetStringRepresentation()
+    {
+        return $"ChecklistGoal:{GetShortName()}|{GetDescription()}|{GetPoints()}|{_bonusPoints}|{_amountCompleted}|{_targetAmount}";
+    }
+
+    // Overrides DisplayProgress to show current completion count
+    public override void DisplayProgress()
+    {
+        string status = IsComplete() ? "[X]" : "[ ]";
+        Console.WriteLine($"{status} {GetShortName()} ({GetDescription()}) -- Completed {_amountCompleted}/{_targetAmount} times");
+    }
+}
+
+// --- Exceeding Requirements: Custom Goal Types ---
+
+// ProgressGoal: A goal for large achievements where partial credit can be earned.
+// Awards points based on units of progress and a bonus upon reaching the target.
+public class ProgressGoal : Goal
+{
+    private double _currentProgress;
+    private double _targetProgress;
+    private double _pointsPerUnit;
+    private int _bonusPoints;
+
+    // Constructor for creating a new ProgressGoal
+    public ProgressGoal(string name, string description, double pointsPerUnit, double targetProgress, int bonusPoints)
+        : base(name, description, 0) // Base points set to 0, points are calculated per unit
+    {
+        _pointsPerUnit = pointsPerUnit;
+        _currentProgress = 0;
+        _targetProgress = targetProgress;
+        _bonusPoints = bonusPoints;
+    }
+
+    // Constructor for loading a ProgressGoal from saved data
+    public ProgressGoal(string name, string description, double pointsPerUnit, double targetProgress, int bonusPoints, double currentProgress)
+        : base(name, description, 0)
+    {
+        _pointsPerUnit = pointsPerUnit;
+        _currentProgress = currentProgress;
+        _targetProgress = targetProgress;
+        _bonusPoints = bonusPoints;
+    }
+
+    // Overrides RecordEvent to accept a 'unit' parameter for progress.
+    // Polymorphism: This method signature is different from the base class `RecordEvent()`.
+    // It's an overload specific to ProgressGoal.
+    public int RecordEvent(double units)
+    {
+        if (!IsComplete())
+        {
+            _currentProgress += units;
+            // Ensure progress doesn't exceed target
+            if (_currentProgress > _targetProgress)
+            {
+                _currentProgress = _targetProgress;
+            }
+
+            int pointsEarned = (int)(units * _pointsPerUnit);
+            Console.WriteLine($"You made {units} units of progress on '{GetShortName()}' and earned {pointsEarned} points!");
+
+            if (IsComplete() && _currentProgress == _targetProgress) // Check if goal is now truly complete
+            {
+                pointsEarned += _bonusPoints;
+                Console.WriteLine($"Congratulations! You fully completed '{GetShortName()}' and earned a bonus of {_bonusPoints} points!");
+            }
+            return pointsEarned;
+        }
+        else
+        {
+            Console.WriteLine($"'{GetShortName()}' is already complete. No additional progress or points awarded.");
+            return 0;
+        }
+    }
+
+    // The base `RecordEvent()` for compatibility, prompts for units.
+    public override int RecordEvent()
+    {
+        Console.Write($"Enter units of progress for '{GetShortName()}': ");
+        if (double.TryParse(Console.ReadLine(), out double units))
+        {
+            return RecordEvent(units);
+        }
+        else
+        {
+            Console.WriteLine("Invalid input. Please enter a numeric value for units.");
+            return 0;
+        }
+    }
+
+    // Overrides IsComplete to check if target progress has been met
+    public override bool IsComplete()
+    {
+        return _currentProgress >= _targetProgress;
+    }
+
+    // Overrides GetStringRepresentation for saving
+    public override string GetStringRepresentation()
+    {
+        return $"ProgressGoal:{GetShortName()}|{GetDescription()}|{_pointsPerUnit}|{_targetProgress}|{_bonusPoints}|{_currentProgress}";
+    }
+
+    // Overrides DisplayProgress to show current progress
+    public override void DisplayProgress()
+    {
+        string status = IsComplete() ? "[X]" : "[ ]";
+        Console.WriteLine($"{status} {GetShortName()} ({GetDescription()}) -- Progress: {_currentProgress:F2}/{_targetProgress:F2} (Points per unit: {_pointsPerUnit:F2})");
+    }
+}
+
+// NegativeGoal: A goal to track bad habits. Recording it subtracts points.
+public class NegativeGoal : Goal
+{
+    // Constructor for NegativeGoal
+    public NegativeGoal(string name, string description, int penaltyPoints) : base(name, description, penaltyPoints)
+    {
+        // No specific state needed beyond base properties. PenaltyPoints is stored in base `_points`.
+    }
+
+    // Overrides RecordEvent to subtract points
+    public override int RecordEvent()
+    {
+        Console.WriteLine($"Oh no! You recorded '{GetShortName()}' and lost {GetPoints()} points!");
+        return -GetPoints(); // Return negative points
+    }
+
+    // Overrides IsComplete to always return false as negative goals are about avoidance, not completion.
+    public override bool IsComplete()
+    {
+        return false;
+    }
+
+    // Overrides GetStringRepresentation for saving
+    public override string GetStringRepresentation()
+    {
+        return $"NegativeGoal:{GetShortName()}|{GetDescription()}|{GetPoints()}"; // GetPoints() will store the penalty
+    }
+
+    // Overrides DisplayProgress to show without a completion checkbox
+    public override void DisplayProgress()
+    {
+        Console.WriteLine($"[ ] {GetShortName()} ({GetDescription()}) - (Bad Habit: Lose {GetPoints()} points)");
+    }
+}
+
+
+// --- QuestManager Class ---
+// Manages all goals, the user's score, and gamification aspects.
+public class QuestManager
+{
+    private List<Goal> _goals;
+    private int _score;
+    private int _level;
+    private readonly string _saveFileName = "eternalquest.txt"; // File name for saving/loading
+
+    // Level progression (points needed for each level)
+    private static readonly Dictionary<int, int> _levelThresholds = new Dictionary<int, int>
+    {
+        {1, 0},
+        {2, 1000},
+        {3, 2500},
+        {4, 4500},
+        {5, 7000},
+        {6, 10000},
+        {7, 13500},
+        {8, 17500},
+        {9, 22000},
+        {10, 27000},
+        {11, 32500},
+        {12, 38500},
+        {13, 45000} // Target for Level 13 Ninja Unicorn!
+    };
+
+    // Level names for gamification
+    private static readonly Dictionary<int, string> _levelNames = new Dictionary<int, string>
+    {
+        {1, "Acolyte of Aspiration"},
+        {2, "Journeyman of Joy"},
+        {3, "Seeker of Serenity"},
+        {4, "Guardian of Growth"},
+        {5, "Champion of Charity"},
+        {6, "Master of Mindfulness"},
+        {7, "Luminary of Love"},
+        {8, "Architect of Affirmation"},
+        {9, "Sovereign of Service"},
+        {10, "Phoenix of Purpose"},
+        {11, "Dragon of Devotion"},
+        {12, "Titan of Truth"},
+        {13, "Ninja Unicorn!"} // The ultimate level!
+    };
+
+
+    public QuestManager()
+    {
+        _goals = new List<Goal>();
+        _score = 0;
+        _level = 1; // Start at Level 1
+    }
+
+    // Displays the main menu and handles user input
+    public void StartQuest()
+    {
+        LoadGoals(); // Try to load saved data at startup
+
+        int choice = 0;
+        while (choice != 6)
+        {
+            DisplayScoreAndLevel();
+            Console.WriteLine("\nMenu Options:");
+            Console.WriteLine("  1. Create New Goal");
+            Console.WriteLine("  2. List Goals");
+            Console.WriteLine("  3. Record Event");
+            Console.WriteLine("  4. Save Goals");
+            Console.WriteLine("  5. Load Goals");
+            Console.WriteLine("  6. Quit");
+            Console.Write("Select a choice from the menu: ");
+
+            if (int.TryParse(Console.ReadLine(), out choice))
+            {
+                switch (choice)
+                {
+                    case 1:
+                        CreateNewGoal();
+                        break;
+                    case 2:
+                        ListGoals();
+                        break;
+                    case 3:
+                        RecordEvent();
+                        break;
+                    case 4:
+                        SaveGoals();
+                        break;
+                    case 5:
+                        LoadGoals();
+                        break;
+                    case 6:
+                        Console.WriteLine("Farewell, brave adventurer! May your eternal quest continue!");
+                        break;
+                    default:
+                        Console.WriteLine("Invalid choice. Please enter a number between 1 and 6.");
+                        break;
+                }
+            }
+            else
+            {
+                Console.WriteLine("Invalid input. Please enter a number.");
+            }
+        }
+    }
+
+    // Creates a new goal based on user input
+    public void CreateNewGoal()
+    {
+        Console.WriteLine("\nThe types of Goals are:");
+        Console.WriteLine("  1. Simple Goal");
+        Console.WriteLine("  2. Eternal Goal");
+        Console.WriteLine("  3. Checklist Goal");
+        Console.WriteLine("  4. Progress Goal (Exceeding Requirements)"); // Added new goal type
+        Console.WriteLine("  5. Negative Goal (Exceeding Requirements)"); // Added new goal type
+        Console.Write("Which type of goal would you like to create? ");
+        string goalTypeChoice = Console.ReadLine();
+
+        Console.Write("What is the name of your goal? ");
+        string name = Console.ReadLine();
+        Console.Write("What is a short description of it? ");
+        string description = Console.ReadLine();
+
+        int points;
+        while (true)
+        {
+            Console.Write("What is the amount of points associated with this goal? ");
+            if (int.TryParse(Console.ReadLine(), out points))
+            {
+                if (points >= 0 || goalTypeChoice == "5") // Points can be 0 or negative for NegativeGoal
+                {
+                    break;
+                }
+                else
+                {
+                    Console.WriteLine("Points cannot be negative for this goal type. Please enter a non-negative number.");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Invalid input. Please enter a number for points.");
+            }
+        }
+
+        switch (goalTypeChoice)
+        {
+            case "1": // Simple Goal
+                _goals.Add(new SimpleGoal(name, description, points));
+                break;
+            case "2": // Eternal Goal
+                _goals.Add(new EternalGoal(name, description, points));
+                break;
+            case "3": // Checklist Goal
+                int targetAmount;
+                while (true)
+                {
+                    Console.Write("How many times does this goal need to be accomplished for a bonus? ");
+                    if (int.TryParse(Console.ReadLine(), out targetAmount) && targetAmount > 0)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Invalid input. Please enter a positive number for the target amount.");
+                    }
+                }
+                int bonusPoints;
+                while (true)
+                {
+                    Console.Write("What is the bonus for accomplishing it that many times? ");
+                    if (int.TryParse(Console.ReadLine(), out bonusPoints) && bonusPoints >= 0)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Invalid input. Please enter a non-negative number for bonus points.");
+                    }
+                }
+                _goals.Add(new ChecklistGoal(name, description, points, targetAmount, bonusPoints));
+                break;
+            case "4": // Progress Goal (Exceeding Requirements)
+                double pointsPerUnit;
+                while (true)
+                {
+                    Console.Write("What are the points gained per unit of progress? (e.g., 100.5) ");
+                    if (double.TryParse(Console.ReadLine(), out pointsPerUnit) && pointsPerUnit >= 0)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Invalid input. Please enter a non-negative numeric value.");
+                    }
+                }
+                double targetProgress;
+                while (true)
+                {
+                    Console.Write("What is the total target progress for this goal? (e.g., 26.2 for a marathon) ");
+                    if (double.TryParse(Console.ReadLine(), out targetProgress) && targetProgress > 0)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Invalid input. Please enter a positive numeric value.");
+                    }
+                }
+                int progressBonus;
+                while (true)
+                {
+                    Console.Write("What is the bonus for fully completing this progress goal? ");
+                    if (int.TryParse(Console.ReadLine(), out progressBonus) && progressBonus >= 0)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Invalid input. Please enter a non-negative number for bonus points.");
+                    }
+                }
+                _goals.Add(new ProgressGoal(name, description, pointsPerUnit, targetProgress, progressBonus));
+                break;
+            case "5": // Negative Goal (Exceeding Requirements)
+                // Points already collected will be the penalty points.
+                _goals.Add(new NegativeGoal(name, description, points));
+                break;
+            default:
+                Console.WriteLine("Unknown goal type. Goal not created.");
+                break;
+        }
+    }
+
+    // Displays the list of all goals and their current progress
+    public void ListGoals()
+    {
+        if (_goals.Count == 0)
+        {
+            Console.WriteLine("\nNo goals set yet. Time to embark on your quest!");
+            return;
+        }
+
+        Console.WriteLine("\nYour Goals:");
+        for (int i = 0; i < _goals.Count; i++)
+        {
+            Console.Write($"{i + 1}. ");
+            _goals[i].DisplayProgress(); // Polymorphism in action!
+        }
+    }
+
+    // Allows the user to record an event for a chosen goal
+    public void RecordEvent()
+    {
+        if (_goals.Count == 0)
+        {
+            Console.WriteLine("\nNo goals to record an event for. Create some goals first!");
+            return;
+        }
+
+        ListGoals(); // Show goals to help user choose
+        Console.Write("Which goal did you accomplish? (Enter the number) ");
+        if (int.TryParse(Console.ReadLine(), out int goalIndex) && goalIndex > 0 && goalIndex <= _goals.Count)
+        {
+            int pointsEarned = _goals[goalIndex - 1].RecordEvent(); // Polymorphism!
+            _score += pointsEarned;
+            CheckLevelUp(); // Check for level up after earning points
+        }
+        else
+        {
+            Console.WriteLine("Invalid goal number. Please select a valid goal.");
+        }
+    }
+
+    // Displays the current total score and quest level
+    public void DisplayScoreAndLevel()
+    {
+        string levelName = _levelNames.ContainsKey(_level) ? _levelNames[_level] : $"Level {_level}";
+        Console.WriteLine($"\nYou are a {levelName} with {_score} points.");
+    }
+
+    // Checks if the user has enough points to level up
+    private void CheckLevelUp()
+    {
+        // Find the highest level the current score qualifies for
+        int newLevel = _levelThresholds.Where(kv => _score >= kv.Value).Max(kv => kv.Key);
+
+        if (newLevel > _level)
+        {
+            int oldLevel = _level;
+            _level = newLevel;
+            string oldLevelName = _levelNames.ContainsKey(oldLevel) ? _levelNames[oldLevel] : $"Level {oldLevel}";
+            string newLevelName = _levelNames.ContainsKey(_level) ? _levelNames[_level] : $"Level {_level}";
+            Console.WriteLine($"\n*** CONGRATULATIONS, {oldLevelName}! You have leveled up to {newLevelName}! ***");
+        }
+    }
+
+    // Saves the current goals and score to a file
+    public void SaveGoals()
+    {
+        try
+        {
+            using (StreamWriter outputFile = new StreamWriter(_saveFileName))
+            {
+                // First line: score and level
+                outputFile.WriteLine($"{_score},{_level}");
+
+                // Subsequent lines: each goal's string representation
+                foreach (Goal goal in _goals)
+                {
+                    outputFile.WriteLine(goal.GetStringRepresentation());
+                }
+            }
+            Console.WriteLine($"Goals and score saved successfully to '{_saveFileName}'.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving goals: {ex.Message}");
+        }
+    }
+
+    // Loads goals and score from a file
+    public void LoadGoals()
+    {
+        if (!File.Exists(_saveFileName))
+        {
+            Console.WriteLine($"\nNo saved data found at '{_saveFileName}'. Starting a new quest!");
+            return;
+        }
+
+        try
+        {
+            _goals.Clear(); // Clear existing goals before loading
+            using (StreamReader inputFile = new StreamReader(_saveFileName))
+            {
+                // First line contains score and level
+                string firstLine = inputFile.ReadLine();
+                if (firstLine != null)
+                {
+                    string[] scoreLevel = firstLine.Split(',');
+                    if (scoreLevel.Length == 2 && int.TryParse(scoreLevel[0], out int loadedScore) && int.TryParse(scoreLevel[1], out int loadedLevel))
+                    {
+                        _score = loadedScore;
+                        _level = loadedLevel;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Warning: Could not parse score and level from saved file. Using defaults.");
+                        _score = 0;
+                        _level = 1;
+                    }
+                }
+
+                // Read remaining lines for goals
+                string line;
+                while ((line = inputFile.ReadLine()) != null)
+                {
+                    string[] parts = line.Split(':');
+                    string goalType = parts[0];
+                    string[] data = parts[1].Split('|');
+
+                    // Factory-like pattern to reconstruct goal objects based on type
+                    switch (goalType)
+                    {
+                        case "SimpleGoal":
+                            _goals.Add(new SimpleGoal(data[0], data[1], int.Parse(data[2]), bool.Parse(data[3])));
+                            break;
+                        case "EternalGoal":
+                            _goals.Add(new EternalGoal(data[0], data[1], int.Parse(data[2])));
+                            break;
+                        case "ChecklistGoal":
+                            _goals.Add(new ChecklistGoal(data[0], data[1], int.Parse(data[2]), int.Parse(data[4]), int.Parse(data[3]), int.Parse(data[5])));
+                            break;
+                        case "ProgressGoal": // Handle loading for new goal types
+                            _goals.Add(new ProgressGoal(data[0], data[1], double.Parse(data[2]), double.Parse(data[3]), int.Parse(data[4]), double.Parse(data[5])));
+                            break;
+                        case "NegativeGoal": // Handle loading for new goal types
+                            _goals.Add(new NegativeGoal(data[0], data[1], int.Parse(data[2])));
+                            break;
+                        default:
+                            Console.WriteLine($"Unknown goal type encountered: {goalType}. Skipping.");
+                            break;
+                    }
+                }
+            }
+            Console.WriteLine($"Goals and score loaded successfully from '{_saveFileName}'.");
+        }
+        catch (FileNotFoundException)
+        {
+            Console.WriteLine($"\nNo saved data found at '{_saveFileName}'. Starting a new quest!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading goals: {ex.Message}");
+            Console.WriteLine("It's possible the save file is corrupted. Starting a new quest.");
+            _goals.Clear(); // Clear any partially loaded data
+            _score = 0;
+            _level = 1;
+        }
+    }
+}
